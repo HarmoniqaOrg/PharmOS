@@ -7,7 +7,10 @@
     "start": "node src/api/server.js",
     "dev": "nodemon src/api/server.js",
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
     "build": "webpack --mode production",
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
@@ -36,7 +39,8 @@
     "axios": "^1.6.2",
     "node-cron": "^3.0.3",
     "socket.io": "^4.6.2",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "prom-client": "^15.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",

@@ -6,12 +6,37 @@ const dotenv = require('dotenv');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const winston = require('winston');
+const promClient = require('prom-client');
 const mockDataService = require('../services/mockDataService');
 const authService = require('../services/authService');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 
 // Load environment variables
 dotenv.config();
+
+// Initialize Prometheus metrics
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register });
+
+const httpRequestsTotal = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'endpoint', 'status'],
+  registers: [register]
+});
+
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'endpoint'],
+  registers: [register]
+});
+
+const activeConnections = new promClient.Gauge({
+  name: 'http_active_connections',
+  help: 'Number of active HTTP connections',
+  registers: [register]
+});
 
 // Initialize Express app
 const app = express();
@@ -43,6 +68,23 @@ app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Metrics middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  activeConnections.inc();
+  
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    const endpoint = req.route ? req.route.path : req.path;
+    
+    httpRequestsTotal.labels(req.method, endpoint, res.statusCode).inc();
+    httpRequestDuration.labels(req.method, endpoint).observe(duration);
+    activeConnections.dec();
+  });
+  
+  next();
+});
+
 // Request logging middleware
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`, {
@@ -52,10 +94,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// Metrics endpoint for Prometheus
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    res.status(500).end(error);
+  }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
+    service: 'backend',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development'
