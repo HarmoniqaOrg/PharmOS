@@ -27,6 +27,22 @@ enum TrialStatus {
   TERMINATED
 }
 
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectType {
+  DRUG_DISCOVERY
+  CLINICAL_DEVELOPMENT
+  REGULATORY
+  RESEARCH
+  SAFETY_MONITORING
+}
+
 enum SafetyEventSeverity {
   MILD
   MODERATE
@@ -85,6 +101,7 @@ type User {
   permissions: [String!]!
   isActive: Boolean!
   lastLogin: DateTime
+  projects: [Project!]!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -99,7 +116,29 @@ type Molecule {
   predictions: [MLPrediction!]!
   safetyEvents: [SafetyEvent!]!
   clinicalTrials: [ClinicalTrial!]!
+  projects: [Project!]!
   researchPapers: [ResearchPaper!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Project {
+  id: ID!
+  name: String!
+  description: String
+  status: ProjectStatus!
+  type: ProjectType!
+  startDate: DateTime!
+  endDate: DateTime
+  budget: Float
+  team: [User!]!
+  lead: User
+  molecules: [Molecule!]!
+  clinicalTrials: [ClinicalTrial!]!
+  researchPapers: [ResearchPaper!]!
+  progress: Float
+  milestones: [String!]
+  tags: [String!]
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -121,6 +160,7 @@ type ClinicalTrial {
   secondaryEndpoints: [String!]
   eligibilityCriteria: String
   locations: [String!]
+  project: Project
   molecules: [Molecule!]!
   safetyEvents: [SafetyEvent!]!
   publications: [ResearchPaper!]!
@@ -140,6 +180,7 @@ type ResearchPaper {
   keywords: [String!]
   fullText: String
   citationCount: Int
+  project: Project
   molecules: [Molecule!]!
   clinicalTrials: [ClinicalTrial!]!
   researchInsights: [ResearchInsight!]!
@@ -221,6 +262,37 @@ input MoleculeUpdateInput {
   properties: JSON
 }
 
+input ProjectInput {
+  name: String!
+  description: String
+  status: ProjectStatus!
+  type: ProjectType!
+  startDate: DateTime!
+  endDate: DateTime
+  budget: Float
+  leadId: ID
+  teamIds: [ID!]
+  moleculeIds: [ID!]
+  milestones: [String!]
+  tags: [String!]
+}
+
+input ProjectUpdateInput {
+  name: String
+  description: String
+  status: ProjectStatus
+  type: ProjectType
+  startDate: DateTime
+  endDate: DateTime
+  budget: Float
+  leadId: ID
+  teamIds: [ID!]
+  moleculeIds: [ID!]
+  progress: Float
+  milestones: [String!]
+  tags: [String!]
+}
+
 input ClinicalTrialInput {
   trialId: String!
   title: String!
@@ -237,6 +309,7 @@ input ClinicalTrialInput {
   secondaryEndpoints: [String!]
   eligibilityCriteria: String
   locations: [String!]
+  projectId: ID
   moleculeIds: [ID!]
 }
 
@@ -255,6 +328,7 @@ input ClinicalTrialUpdateInput {
   secondaryEndpoints: [String!]
   eligibilityCriteria: String
   locations: [String!]
+  projectId: ID
   moleculeIds: [ID!]
 }
 
@@ -268,6 +342,7 @@ input ResearchPaperInput {
   doi: String
   keywords: [String!]
   fullText: String
+  projectId: ID
   moleculeIds: [ID!]
   clinicalTrialIds: [ID!]
 }
@@ -320,6 +395,18 @@ input MoleculeFilter {
   maxMolecularWeight: Float
   minLogP: Float
   maxLogP: Float
+  projectId: ID
+}
+
+input ProjectFilter {
+  name: String
+  status: ProjectStatus
+  type: ProjectType
+  leadId: ID
+  teamMemberId: ID
+  startDateAfter: DateTime
+  startDateBefore: DateTime
+  budget: Float
 }
 
 input ClinicalTrialFilter {
@@ -331,6 +418,7 @@ input ClinicalTrialFilter {
   maxEnrollment: Int
   startDateAfter: DateTime
   startDateBefore: DateTime
+  projectId: ID
 }
 
 input SafetyEventFilter {
@@ -351,6 +439,7 @@ input ResearchPaperFilter {
   yearTo: Int
   authorContains: String
   keywordContains: String
+  projectId: ID
 }
 
 input ResearchInsightFilter {
@@ -387,6 +476,11 @@ type MoleculePaginatedResponse {
   pagination: PaginationInfo!
 }
 
+type ProjectPaginatedResponse {
+  data: [Project!]!
+  pagination: PaginationInfo!
+}
+
 type ClinicalTrialPaginatedResponse {
   data: [ClinicalTrial!]!
   pagination: PaginationInfo!
@@ -413,6 +507,14 @@ type MoleculeAnalytics {
   byProperty: JSON!
   predictionsCount: Int!
   safetyEventsCount: Int!
+}
+
+type ProjectAnalytics {
+  totalCount: Int!
+  byStatus: JSON!
+  byType: JSON!
+  budgetStats: JSON!
+  progressStats: JSON!
 }
 
 type ClinicalTrialAnalytics {
@@ -449,6 +551,12 @@ type Query {
   searchMolecules(query: String!, pagination: PaginationInput): MoleculePaginatedResponse!
   similarMolecules(smiles: String!, threshold: Float = 0.8, limit: Int = 10): [Molecule!]!
   
+  # Project queries
+  project(id: ID!): Project
+  projects(filter: ProjectFilter, pagination: PaginationInput): ProjectPaginatedResponse!
+  searchProjects(query: String!, pagination: PaginationInput): ProjectPaginatedResponse!
+  myProjects(pagination: PaginationInput): ProjectPaginatedResponse!
+  
   # Clinical trial queries
   clinicalTrial(id: ID!): ClinicalTrial
   clinicalTrialByTrialId(trialId: String!): ClinicalTrial
@@ -476,12 +584,14 @@ type Query {
   
   # Analytics queries
   moleculeAnalytics(filter: MoleculeFilter): MoleculeAnalytics!
+  projectAnalytics(filter: ProjectFilter): ProjectAnalytics!
   clinicalTrialAnalytics(filter: ClinicalTrialFilter): ClinicalTrialAnalytics!
   safetyAnalytics(filter: SafetyEventFilter): SafetyAnalytics!
   
   # Cross-entity queries
   entitiesForMolecule(moleculeId: ID!): Molecule
   entitiesForTrial(trialId: ID!): ClinicalTrial
+  entitiesForProject(projectId: ID!): Project
 }
 
 # =========================
@@ -493,6 +603,11 @@ type Mutation {
   createMolecule(input: MoleculeInput!): Molecule!
   updateMolecule(id: ID!, input: MoleculeUpdateInput!): Molecule!
   deleteMolecule(id: ID!): Boolean!
+  
+  # Project mutations
+  createProject(input: ProjectInput!): Project!
+  updateProject(id: ID!, input: ProjectUpdateInput!): Project!
+  deleteProject(id: ID!): Boolean!
   
   # Clinical trial mutations
   createClinicalTrial(input: ClinicalTrialInput!): ClinicalTrial!
@@ -526,10 +641,14 @@ type Mutation {
   generateMolecules(scaffold: String!, count: Int = 5): [Molecule!]!
   
   # Association mutations
+  linkMoleculeToProject(moleculeId: ID!, projectId: ID!): Boolean!
+  unlinkMoleculeFromProject(moleculeId: ID!, projectId: ID!): Boolean!
   linkMoleculeToTrial(moleculeId: ID!, trialId: ID!): Boolean!
   unlinkMoleculeFromTrial(moleculeId: ID!, trialId: ID!): Boolean!
   linkPaperToMolecule(paperId: ID!, moleculeId: ID!): Boolean!
   unlinkPaperFromMolecule(paperId: ID!, moleculeId: ID!): Boolean!
+  addUserToProject(userId: ID!, projectId: ID!): Boolean!
+  removeUserFromProject(userId: ID!, projectId: ID!): Boolean!
 }
 
 # =========================
@@ -541,6 +660,10 @@ type Subscription {
   moleculeUpdated(id: ID): Molecule!
   moleculeCreated: Molecule!
   moleculeDeleted: ID!
+  
+  projectUpdated(id: ID): Project!
+  projectCreated: Project!
+  projectDeleted: ID!
   
   clinicalTrialUpdated(id: ID): ClinicalTrial!
   clinicalTrialCreated: ClinicalTrial!
@@ -556,6 +679,7 @@ type Subscription {
   # Activity feeds
   recentActivity: JSON!
   userActivity(userId: ID!): JSON!
+  projectActivity(projectId: ID!): JSON!
   
   # Notifications
   notifications(userId: ID!): JSON!
