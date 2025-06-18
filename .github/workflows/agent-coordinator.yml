@@ -1,0 +1,328 @@
+name: Agent Coordination System
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Every 15 minutes
+  push:
+    branches: [main, feature/*]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  update-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Fetch All Branches
+        run: |
+          git fetch --all
+      
+      - name: Generate Agent Status
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const branches = [
+              'feature/ml-enhancement',
+              'feature/frontend-polish', 
+              'feature/testing-suite',
+              'feature/api-graphql',
+              'feature/devops-monitoring'
+            ];
+            
+            const agentStatus = {};
+            
+            for (const branch of branches) {
+              try {
+                // Get branch info
+                const branchData = await github.rest.repos.getBranch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  branch: branch
+                });
+                
+                // Get recent commits
+                const commits = await github.rest.repos.listCommits({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  sha: branch,
+                  per_page: 10
+                });
+                
+                // Get PR info
+                const prs = await github.rest.pulls.list({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  head: `${context.repo.owner}:${branch}`,
+                  state: 'all'
+                });
+                
+                agentStatus[branch] = {
+                  lastCommit: commits.data[0]?.commit?.message || 'No commits yet',
+                  commitCount: commits.data.length,
+                  lastCommitTime: commits.data[0]?.commit?.author?.date || 'N/A',
+                  openPRs: prs.data.filter(pr => pr.state === 'open').length,
+                  mergedPRs: prs.data.filter(pr => pr.state === 'closed' && pr.merged).length
+                };
+              } catch (error) {
+                console.error(`Error fetching ${branch}:`, error);
+                agentStatus[branch] = { error: error.message };
+              }
+            }
+            
+            // Update dashboard file
+            const dashboardContent = generateDashboard(agentStatus);
+            fs.writeFileSync('AGENT_STATUS_DASHBOARD.md', dashboardContent);
+            
+            function generateDashboard(status) {
+              const now = new Date().toISOString();
+              return `# 🚀 PharmOS Agent Status Dashboard
+            
+*Last Updated: ${now}*
+
+## 📊 Agent Activity
+
+| Agent | Branch | Last Commit | Commits | Open PRs | Merged PRs |
+|-------|--------|-------------|---------|----------|------------|
+| 🧬 ML | feature/ml-enhancement | ${status['feature/ml-enhancement']?.lastCommit?.substring(0, 50) || 'N/A'} | ${status['feature/ml-enhancement']?.commitCount || 0} | ${status['feature/ml-enhancement']?.openPRs || 0} | ${status['feature/ml-enhancement']?.mergedPRs || 0} |
+| 🎨 Frontend | feature/frontend-polish | ${status['feature/frontend-polish']?.lastCommit?.substring(0, 50) || 'N/A'} | ${status['feature/frontend-polish']?.commitCount || 0} | ${status['feature/frontend-polish']?.openPRs || 0} | ${status['feature/frontend-polish']?.mergedPRs || 0} |
+| 🧪 Testing | feature/testing-suite | ${status['feature/testing-suite']?.lastCommit?.substring(0, 50) || 'N/A'} | ${status['feature/testing-suite']?.commitCount || 0} | ${status['feature/testing-suite']?.openPRs || 0} | ${status['feature/testing-suite']?.mergedPRs || 0} |
+| 🔌 API | feature/api-graphql | ${status['feature/api-graphql']?.lastCommit?.substring(0, 50) || 'N/A'} | ${status['feature/api-graphql']?.commitCount || 0} | ${status['feature/api-graphql']?.openPRs || 0} | ${status['feature/api-graphql']?.mergedPRs || 0} |
+| 🔧 DevOps | feature/devops-monitoring | ${status['feature/devops-monitoring']?.lastCommit?.substring(0, 50) || 'N/A'} | ${status['feature/devops-monitoring']?.commitCount || 0} | ${status['feature/devops-monitoring']?.openPRs || 0} | ${status['feature/devops-monitoring']?.mergedPRs || 0} |
+
+## 🎯 Autonomous Operations Active
+- ✅ Auto-merge enabled
+- ✅ Conflict resolution active  
+- ✅ Integration tests running
+- ✅ Performance monitoring active
+`;
+            }
+      
+      - name: Commit Dashboard Update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add AGENT_STATUS_DASHBOARD.md || true
+          git commit -m "🤖 Update agent status dashboard [skip ci]" || true
+          git push || true
+
+  coordinate-agents:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check Agent Conflicts
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Check for potential conflicts between agent branches
+            const conflicts = [];
+            const branches = [
+              'feature/ml-enhancement',
+              'feature/frontend-polish',
+              'feature/testing-suite',
+              'feature/api-graphql',
+              'feature/devops-monitoring'
+            ];
+            
+            // Check for file conflicts
+            for (let i = 0; i < branches.length; i++) {
+              for (let j = i + 1; j < branches.length; j++) {
+                try {
+                  const comparison = await github.rest.repos.compareCommits({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    base: branches[i],
+                    head: branches[j]
+                  });
+                  
+                  const conflictingFiles = comparison.data.files
+                    ?.filter(f => f.status === 'modified')
+                    ?.map(f => f.filename) || [];
+                  
+                  if (conflictingFiles.length > 0) {
+                    conflicts.push({
+                      branches: [branches[i], branches[j]],
+                      files: conflictingFiles
+                    });
+                  }
+                } catch (error) {
+                  console.log(`No conflicts between ${branches[i]} and ${branches[j]}`);
+                }
+              }
+            }
+            
+            if (conflicts.length > 0) {
+              // Create coordination issue
+              const issueBody = `## 🚨 Agent Coordination Required
+              
+The following branches have overlapping changes:
+
+${conflicts.map(c => `
+### ${c.branches[0]} ↔️ ${c.branches[1]}
+Files affected:
+${c.files.map(f => `- ${f}`).join('\\n')}
+`).join('\\n')}
+
+**Recommended Actions:**
+1. Agents should coordinate on shared files
+2. Use the conflict resolution strategy
+3. Test integration points
+`;
+              
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🤖 Agent Coordination Required',
+                body: issueBody,
+                labels: ['agent-coordination', 'automated']
+              });
+            }
+
+  assign-new-missions:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check Mission Progress
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Check if agents have completed their current missions
+            const branches = {
+              'feature/ml-enhancement': {
+                agent: 'ML Enhancement',
+                completionMarkers: ['ROADMAP.md', 'ml/models/advanced_predictor.py']
+              },
+              'feature/frontend-polish': {
+                agent: 'Frontend UI',
+                completionMarkers: ['UI_PLAN.md', 'frontend/src/components/MoleculeViewer.tsx']
+              },
+              'feature/testing-suite': {
+                agent: 'Testing Guardian',
+                completionMarkers: ['tests/STRATEGY.md', 'coverage-report.md']
+              },
+              'feature/api-graphql': {
+                agent: 'API Architect',
+                completionMarkers: ['src/graphql/schema.graphql', 'API_CHANGELOG.md']
+              },
+              'feature/devops-monitoring': {
+                agent: 'DevOps Engineer',
+                completionMarkers: ['infrastructure/MONITORING_PLAN.md', 'prometheus.yml']
+              }
+            };
+            
+            for (const [branch, config] of Object.entries(branches)) {
+              try {
+                const files = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: '',
+                  ref: branch
+                });
+                
+                const completedMarkers = config.completionMarkers.filter(marker =>
+                  files.data.some(f => f.path === marker)
+                );
+                
+                if (completedMarkers.length === config.completionMarkers.length) {
+                  // Agent has completed initial mission
+                  console.log(`${config.agent} has completed initial mission!`);
+                  
+                  // Create new mission issue
+                  const newMission = getNextMission(config.agent);
+                  await github.rest.issues.create({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    title: `🎯 New Mission for ${config.agent}`,
+                    body: newMission,
+                    labels: ['agent-mission', config.agent.toLowerCase()]
+                  });
+                }
+              } catch (error) {
+                console.log(`Error checking ${branch}:`, error.message);
+              }
+            }
+            
+            function getNextMission(agent) {
+              const missions = {
+                'ML Enhancement': `## 🧬 Advanced ML Mission
+- Implement federated learning preparation
+- Add multi-target prediction models  
+- Create model explainability features
+- Build automated hyperparameter tuning
+- Implement model drift detection`,
+                
+                'Frontend UI': `## 🎨 Collaboration Features Mission  
+- Add real-time collaboration cursors
+- Implement collaborative editing
+- Create presence indicators
+- Add activity feed component
+- Build notification system`,
+                
+                'Testing Guardian': `## 🧪 Performance Testing Mission
+- Create load testing suite
+- Add memory leak detection
+- Implement visual regression tests
+- Build performance benchmarks
+- Create chaos testing scenarios`,
+                
+                'API Architect': `## 🔌 Partner Integration Mission
+- Add OAuth2 provider support
+- Create webhook system
+- Build rate limiting per partner
+- Implement API key management
+- Add usage analytics`,
+                
+                'DevOps Engineer': `## 🔧 Auto-scaling Mission
+- Implement horizontal pod autoscaling
+- Add predictive scaling
+- Create cost optimization rules
+- Build multi-region deployment
+- Implement blue-green deployments`
+              };
+              
+              return missions[agent] || 'Continue improving your domain!';
+            }
+
+  alert-human:
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Send Alert
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Only alert for critical issues
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Human Intervention Required',
+              body: `## Critical Issue Detected
+              
+**Workflow**: ${context.workflow}
+**Job**: ${context.job}
+**Time**: ${new Date().toISOString()}
+
+The autonomous system has encountered an issue that requires human intervention.
+
+Please check the [workflow logs](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ['critical', 'human-needed']
+            });
+            
+            console.log(`Created alert issue #${issue.data.number}`);

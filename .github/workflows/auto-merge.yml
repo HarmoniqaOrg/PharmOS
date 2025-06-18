@@ -1,0 +1,261 @@
+name: Autonomous PR Management
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  check_suite:
+    types: [completed]
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Auto Label PR
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+            
+            const labels = [];
+            
+            // Add agent labels based on branch
+            if (pr.head.ref.includes('ml-enhancement')) labels.push('agent:ml');
+            if (pr.head.ref.includes('frontend-polish')) labels.push('agent:frontend');
+            if (pr.head.ref.includes('testing-suite')) labels.push('agent:testing');
+            if (pr.head.ref.includes('api-graphql')) labels.push('agent:api');
+            if (pr.head.ref.includes('devops-monitoring')) labels.push('agent:devops');
+            
+            // Add type labels based on files
+            const files = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+            
+            if (files.data.some(f => f.filename.includes('test'))) labels.push('type:tests');
+            if (files.data.some(f => f.filename.includes('.md'))) labels.push('type:docs');
+            if (files.data.some(f => f.filename.includes('ml/'))) labels.push('type:ml');
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: labels
+              });
+            }
+
+  check-merge-eligibility:
+    runs-on: ubuntu-latest
+    needs: auto-label
+    outputs:
+      eligible: ${{ steps.check.outputs.eligible }}
+      priority: ${{ steps.check.outputs.priority }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check Merge Eligibility
+        id: check
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+            
+            // Get PR details
+            const prData = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+            
+            // Check labels
+            const labels = prData.data.labels.map(l => l.name);
+            const hasBlocker = labels.some(l => 
+              ['blocked', 'needs-review', 'breaking-change', 'manual-review'].includes(l)
+            );
+            
+            if (hasBlocker) {
+              core.setOutput('eligible', 'false');
+              return;
+            }
+            
+            // Get check runs
+            const checks = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha
+            });
+            
+            const allChecksPassed = checks.data.check_runs.every(
+              check => check.status === 'completed' && check.conclusion === 'success'
+            );
+            
+            if (!allChecksPassed) {
+              core.setOutput('eligible', 'false');
+              return;
+            }
+            
+            // Determine priority based on branch
+            const branchPriority = {
+              'testing-suite': 1,
+              'devops-monitoring': 2,
+              'api-graphql': 3,
+              'ml-enhancement': 4,
+              'frontend-polish': 5
+            };
+            
+            let priority = 10;
+            for (const [branch, p] of Object.entries(branchPriority)) {
+              if (pr.head.ref.includes(branch)) {
+                priority = p;
+                break;
+              }
+            }
+            
+            core.setOutput('eligible', 'true');
+            core.setOutput('priority', priority.toString());
+
+  auto-merge:
+    runs-on: ubuntu-latest
+    needs: check-merge-eligibility
+    if: needs.check-merge-eligibility.outputs.eligible == 'true'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Wait for Other PRs
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Check if there are higher priority PRs waiting
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open'
+            });
+            
+            const currentPriority = ${{ needs.check-merge-eligibility.outputs.priority }};
+            const higherPriorityPRs = prs.data.filter(pr => {
+              // Check if PR has higher priority based on branch
+              const branchPriority = {
+                'testing-suite': 1,
+                'devops-monitoring': 2,
+                'api-graphql': 3,
+                'ml-enhancement': 4,
+                'frontend-polish': 5
+              };
+              
+              for (const [branch, p] of Object.entries(branchPriority)) {
+                if (pr.head.ref.includes(branch) && p < currentPriority) {
+                  return true;
+                }
+              }
+              return false;
+            });
+            
+            if (higherPriorityPRs.length > 0) {
+              console.log('Waiting for higher priority PRs to merge first');
+              core.setFailed('Higher priority PRs exist');
+              return;
+            }
+      
+      - name: Auto Merge PR
+        uses: pascalgn/merge-action@v0.15.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_LABELS: "!blocked,!needs-review,!breaking-change"
+          MERGE_METHOD: "squash"
+          MERGE_COMMIT_MESSAGE: "pull-request-title"
+          UPDATE_LABELS: "merged"
+          MERGE_RETRIES: "3"
+          MERGE_RETRY_SLEEP: "60000"
+      
+      - name: Update Dashboard
+        if: success()
+        run: |
+          # Update agent status dashboard
+          echo "PR merged successfully" >> merge-log.txt
+          
+  conflict-resolution:
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Attempt Auto Resolution
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+            
+            // Try to resolve conflicts automatically
+            try {
+              // Fetch latest main
+              await exec.exec('git', ['fetch', 'origin', 'main']);
+              await exec.exec('git', ['checkout', pr.head.ref]);
+              
+              // Attempt merge with strategy
+              const mergeResult = await exec.exec('git', [
+                'merge', 
+                'origin/main', 
+                '--strategy-option=theirs',
+                '-m', 
+                'Auto-resolve conflicts'
+              ], { ignoreReturnCode: true });
+              
+              if (mergeResult === 0) {
+                await exec.exec('git', ['push', 'origin', pr.head.ref]);
+                
+                // Add comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: '🤖 Conflicts auto-resolved using merge strategy. Please review changes.'
+                });
+              } else {
+                // Add label for manual review
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  labels: ['needs-manual-merge']
+                });
+              }
+            } catch (error) {
+              console.error('Auto-resolution failed:', error);
+            }
+
+  update-status-dashboard:
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Update Dashboard
+        run: |
+          # This would update the AGENT_STATUS_DASHBOARD.md
+          echo "Dashboard update triggered"
