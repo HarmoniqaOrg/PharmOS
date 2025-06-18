@@ -1,36 +1,83 @@
-from fastapi import FastAPI, HTTPException, Depends
+"""
+FastAPI ML Service for PharmOS platform
+Provides health checks, metrics, and ML prediction endpoints
+"""
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
-import uvicorn
-import logging
-from datetime import datetime
-import os
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client.multiprocess import MultiProcessCollector
+from prometheus_client.registry import REGISTRY
+import time
 import sys
-from dotenv import load_dotenv
+import os
+import uvicorn
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel
+import json
+import logging
+from contextlib import asynccontextmanager
 
-# Add ML module to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../ml'))
-from services.ml_service import ml_service
+# Add parent directory to path to import ML service
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ml'))
 
-# Load environment variables
-load_dotenv()
+from ml.services.ml_service import ml_service
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Prometheus metrics
+request_count = Counter('ml_requests_total', 'Total ML requests', ['endpoint', 'method', 'status'])
+request_duration = Histogram('ml_request_duration_seconds', 'ML request duration', ['endpoint'])
+prediction_count = Counter('ml_predictions_total', 'Total predictions made', ['prediction_type'])
+prediction_duration = Histogram('ml_prediction_duration_seconds', 'Prediction duration', ['prediction_type'])
+model_accuracy = Gauge('ml_model_accuracy', 'Model accuracy', ['model_name'])
+active_connections = Gauge('ml_active_connections', 'Active connections')
+
+# Initialize model accuracy metrics
+for model_name, model_info in ml_service.model_registry.items():
+    if model_info.get('accuracy'):
+        model_accuracy.labels(model_name=model_name).set(model_info['accuracy'])
+
+# Request/Response models
+class SMILESRequest(BaseModel):
+    smiles: str
+    properties: Optional[List[str]] = None
+
+class ActivityRequest(BaseModel):
+    smiles: str
+    target: str
+
+class AnalogRequest(BaseModel):
+    smiles: str
+    n_analogs: int = 5
+
+class SimilarityRequest(BaseModel):
+    smiles1: str
+    smiles2: str
+
+class BatchRequest(BaseModel):
+    smiles_list: List[str]
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("ML Service starting up...")
+    yield
+    # Shutdown
+    logger.info("ML Service shutting down...")
 
 # Initialize FastAPI app
 app = FastAPI(
     title="PharmOS ML Service",
-    description="Machine Learning and AI services for pharmaceutical research",
-    version="0.1.0"
+    description="Machine Learning services for pharmaceutical research",
+    version="0.1.0",
+    lifespan=lifespan
 )
 
-# Configure CORS
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -39,308 +86,201 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pydantic models
-class MoleculeRequest(BaseModel):
-    smiles: str
-    properties: Optional[List[str]] = []
-
-class MoleculeResponse(BaseModel):
-    smiles: str
-    molecular_weight: Optional[float] = None
-    logp: Optional[float] = None
-    properties: Dict[str, Any] = {}
-
-class ResearchQuery(BaseModel):
-    query: str
-    filters: Optional[Dict[str, Any]] = {}
-    limit: int = 10
-
-class PredictionRequest(BaseModel):
-    molecule: str
-    target: str
-    model_type: str = "default"
-
-class SafetyAnalysisRequest(BaseModel):
-    compound: str
-    dose: Optional[float] = None
-    duration: Optional[int] = None
+# Middleware for metrics
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    active_connections.inc()
+    start_time = time.time()
+    
+    try:
+        response = await call_next(request)
+        duration = time.time() - start_time
+        
+        request_count.labels(
+            endpoint=request.url.path,
+            method=request.method,
+            status=response.status_code
+        ).inc()
+        
+        request_duration.labels(endpoint=request.url.path).observe(duration)
+        
+        return response
+    except Exception as e:
+        duration = time.time() - start_time
+        request_count.labels(
+            endpoint=request.url.path,
+            method=request.method,
+            status=500
+        ).inc()
+        request_duration.labels(endpoint=request.url.path).observe(duration)
+        raise
+    finally:
+        active_connections.dec()
 
 # Health check endpoint
 @app.get("/health")
 async def health_check():
+    """Health check endpoint for monitoring"""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "service": "ml-service",
+        "timestamp": time.time(),
+        "models": list(ml_service.model_registry.keys()),
+        "environment": os.getenv("ENVIRONMENT", "development")
+    }
+
+# Detailed health check
+@app.get("/health/detailed")
+async def detailed_health_check():
+    """Detailed health check with model status"""
+    return {
+        "status": "healthy",
+        "service": "ml-service",
+        "timestamp": time.time(),
+        "models": ml_service.model_registry,
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "uptime": time.time(),
+        "memory_usage": "available"  # Could add actual memory usage
+    }
+
+# Metrics endpoint for Prometheus
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint"""
+    from starlette.responses import Response
+    return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
+
+# Root endpoint
+@app.get("/")
+async def root():
+    """API information"""
+    return {
         "service": "PharmOS ML Service",
-        "version": "0.1.0"
-    }
-
-# ML Model endpoints
-@app.post("/api/v1/ml/predict", response_model=Dict[str, Any])
-async def predict(request: PredictionRequest):
-    """
-    Make predictions using trained ML models
-    """
-    logger.info(f"Prediction request for molecule: {request.molecule}")
-    
-    if request.model_type == "activity":
-        result = ml_service.predict_activity(request.molecule, request.target)
-    else:
-        result = ml_service.predict_properties(request.molecule)
-    
-    if not result.get('success'):
-        raise HTTPException(status_code=400, detail=result.get('error', 'Prediction failed'))
-    
-    return {
-        "molecule": request.molecule,
-        "target": request.target,
-        "prediction": result,
-        "model_version": "0.1.0"
-    }
-
-@app.post("/api/v1/ml/molecule/properties", response_model=MoleculeResponse)
-async def calculate_molecule_properties(request: MoleculeRequest):
-    """
-    Calculate molecular properties from SMILES string
-    """
-    logger.info(f"Property calculation for SMILES: {request.smiles}")
-    
-    result = ml_service.predict_properties(request.smiles)
-    
-    if not result.get('success'):
-        raise HTTPException(status_code=400, detail=result.get('error', 'Property calculation failed'))
-    
-    predictions = result.get('predictions', {})
-    return MoleculeResponse(
-        smiles=request.smiles,
-        molecular_weight=predictions.get('molecular_weight'),
-        logp=predictions.get('logP'),
-        properties=predictions
-    )
-
-@app.post("/api/v1/ml/similarity")
-async def calculate_similarity(reference: str, candidates: List[str], method: str = "tanimoto"):
-    """
-    Calculate molecular similarity between compounds
-    """
-    logger.info(f"Similarity calculation: {len(candidates)} candidates")
-    
-    similarities = []
-    for candidate in candidates:
-        result = ml_service.calculate_similarity(reference, candidate)
-        if result.get('success'):
-            similarities.append({
-                "smiles": candidate,
-                "similarity": result['similarity']
-            })
-    
-    return {
-        "reference": reference,
-        "method": "jaccard",  # Using simple method for now
-        "similarities": sorted(similarities, key=lambda x: x['similarity'], reverse=True)
-    }
-
-@app.post("/api/v1/ml/generate")
-async def generate_molecules(scaffold: Optional[str] = None, properties: Optional[Dict[str, float]] = None):
-    """
-    Generate novel molecules based on constraints
-    """
-    logger.info("Molecule generation request")
-    
-    if not scaffold:
-        # Use a default scaffold if none provided
-        scaffold = "CC(C)Cc1ccc(cc1)C(C)C(=O)O"  # Ibuprofen as example
-    
-    result = ml_service.generate_analogs(scaffold, n_analogs=5)
-    
-    if not result.get('success'):
-        raise HTTPException(status_code=400, detail=result.get('error', 'Generation failed'))
-    
-    return {
-        "generated_molecules": result['analogs'],
-        "scaffold": scaffold,
-        "properties": properties,
-        "count": result['count']
-    }
-
-# Research AI endpoints
-@app.post("/api/v1/ai/research/analyze")
-async def analyze_research(query: ResearchQuery):
-    """
-    Analyze research literature using AI
-    """
-    logger.info(f"Research analysis: {query.query}")
-    
-    # TODO: Implement research analysis
-    return {
-        "query": query.query,
-        "analysis": {
-            "summary": "",
-            "key_findings": [],
-            "citations": []
-        },
-        "message": "Research analysis - implementation pending"
-    }
-
-@app.post("/api/v1/ai/research/extract")
-async def extract_entities(text: str, entity_types: List[str] = ["drug", "disease", "gene"]):
-    """
-    Extract biomedical entities from text
-    """
-    logger.info(f"Entity extraction from text (length: {len(text)})")
-    
-    # TODO: Implement entity extraction
-    return {
-        "entities": {},
-        "entity_types": entity_types,
-        "message": "Entity extraction - implementation pending"
-    }
-
-# Safety AI endpoints
-@app.post("/api/v1/ai/safety/predict")
-async def predict_safety(request: SafetyAnalysisRequest):
-    """
-    Predict safety profile of compounds
-    """
-    logger.info(f"Safety prediction for: {request.compound}")
-    
-    # Get ADMET predictions which include toxicity
-    result = ml_service.predict_admet(request.compound)
-    
-    if not result.get('success'):
-        raise HTTPException(status_code=400, detail=result.get('error', 'Safety prediction failed'))
-    
-    toxicity = result['admet']['toxicity']
-    
-    # Calculate overall risk
-    risk_scores = {'low': 0, 'medium': 1, 'high': 2}
-    avg_risk = sum(risk_scores.get(v, 0) for v in toxicity.values()) / len(toxicity)
-    
-    if avg_risk < 0.5:
-        risk_category = "low"
-    elif avg_risk < 1.5:
-        risk_category = "medium"
-    else:
-        risk_category = "high"
-    
-    return {
-        "compound": request.compound,
-        "safety_profile": {
-            "toxicity_score": round(avg_risk / 2, 2),  # Normalize to 0-1
-            "toxicity_details": toxicity,
-            "risk_category": risk_category,
-            "confidence": result['confidence']
+        "version": "0.1.0",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "metrics": "/metrics",
+            "predict_properties": "/predict/properties",
+            "predict_activity": "/predict/activity",
+            "generate_analogs": "/generate/analogs",
+            "calculate_similarity": "/calculate/similarity",
+            "batch_predict": "/predict/batch",
+            "models": "/models"
         }
     }
 
-@app.post("/api/v1/ai/safety/interactions")
-async def predict_interactions(drugs: List[str]):
-    """
-    Predict drug-drug interactions
-    """
-    logger.info(f"Interaction prediction for {len(drugs)} drugs")
-    
-    # TODO: Implement interaction prediction
-    return {
-        "drugs": drugs,
-        "interactions": [],
-        "severity_matrix": {},
-        "message": "Interaction prediction - implementation pending"
-    }
+# Prediction endpoints
+@app.post("/predict/properties")
+async def predict_properties(request: SMILESRequest):
+    """Predict molecular properties"""
+    start_time = time.time()
+    try:
+        result = ml_service.predict_properties(request.smiles)
+        prediction_count.labels(prediction_type="properties").inc()
+        prediction_duration.labels(prediction_type="properties").observe(time.time() - start_time)
+        return result
+    except Exception as e:
+        logger.error(f"Error predicting properties: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Agent endpoints
-@app.post("/agent/research")
-async def research_agent(task: Dict[str, Any]):
-    """
-    Research agent endpoint for literature analysis
-    """
-    logger.info("Research agent task received")
-    
-    # TODO: Implement research agent
-    return {
-        "task_id": f"TASK-{datetime.utcnow().timestamp()}",
-        "status": "pending",
-        "message": "Research agent - implementation pending"
-    }
+@app.post("/predict/activity")
+async def predict_activity(request: ActivityRequest):
+    """Predict activity against target"""
+    start_time = time.time()
+    try:
+        result = ml_service.predict_activity(request.smiles, request.target)
+        prediction_count.labels(prediction_type="activity").inc()
+        prediction_duration.labels(prediction_type="activity").observe(time.time() - start_time)
+        return result
+    except Exception as e:
+        logger.error(f"Error predicting activity: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/agent/molecule")
-async def molecule_agent(task: Dict[str, Any]):
-    """
-    Molecule design agent endpoint
-    """
-    logger.info("Molecule agent task received")
-    
-    # TODO: Implement molecule agent
-    return {
-        "task_id": f"TASK-{datetime.utcnow().timestamp()}",
-        "status": "pending",
-        "message": "Molecule agent - implementation pending"
-    }
+@app.post("/predict/admet")
+async def predict_admet(request: SMILESRequest):
+    """Predict ADMET properties"""
+    start_time = time.time()
+    try:
+        result = ml_service.predict_admet(request.smiles)
+        prediction_count.labels(prediction_type="admet").inc()
+        prediction_duration.labels(prediction_type="admet").observe(time.time() - start_time)
+        return result
+    except Exception as e:
+        logger.error(f"Error predicting ADMET: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/agent/clinical")
-async def clinical_agent(task: Dict[str, Any]):
-    """
-    Clinical trials agent endpoint
-    """
-    logger.info("Clinical agent task received")
-    
-    # TODO: Implement clinical agent
-    return {
-        "task_id": f"TASK-{datetime.utcnow().timestamp()}",
-        "status": "pending",
-        "message": "Clinical agent - implementation pending"
-    }
+@app.post("/generate/analogs")
+async def generate_analogs(request: AnalogRequest):
+    """Generate molecular analogs"""
+    start_time = time.time()
+    try:
+        result = ml_service.generate_analogs(request.smiles, request.n_analogs)
+        prediction_count.labels(prediction_type="analogs").inc()
+        prediction_duration.labels(prediction_type="analogs").observe(time.time() - start_time)
+        return result
+    except Exception as e:
+        logger.error(f"Error generating analogs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/agent/safety")
-async def safety_agent(task: Dict[str, Any]):
-    """
-    Safety monitoring agent endpoint
-    """
-    logger.info("Safety agent task received")
-    
-    # TODO: Implement safety agent
-    return {
-        "task_id": f"TASK-{datetime.utcnow().timestamp()}",
-        "status": "pending",
-        "message": "Safety agent - implementation pending"
-    }
+@app.post("/calculate/similarity")
+async def calculate_similarity(request: SimilarityRequest):
+    """Calculate molecular similarity"""
+    start_time = time.time()
+    try:
+        result = ml_service.calculate_similarity(request.smiles1, request.smiles2)
+        prediction_count.labels(prediction_type="similarity").inc()
+        prediction_duration.labels(prediction_type="similarity").observe(time.time() - start_time)
+        return result
+    except Exception as e:
+        logger.error(f"Error calculating similarity: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Model management endpoints
-@app.get("/api/v1/models")
-async def list_models():
-    """
-    List available ML models
-    """
-    result = ml_service.get_model_info()
-    
-    if not result.get('success'):
-        raise HTTPException(status_code=500, detail="Failed to retrieve models")
-    
-    return {
-        "models": result['models']
-    }
+@app.post("/predict/batch")
+async def batch_predict(request: BatchRequest):
+    """Batch prediction for multiple molecules"""
+    start_time = time.time()
+    try:
+        result = ml_service.batch_predict(request.smiles_list)
+        prediction_count.labels(prediction_type="batch").inc()
+        prediction_duration.labels(prediction_type="batch").observe(time.time() - start_time)
+        return result
+    except Exception as e:
+        logger.error(f"Error in batch prediction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/v1/models/train")
-async def train_model(model_name: str, dataset: str, hyperparameters: Optional[Dict[str, Any]] = None):
-    """
-    Trigger model training
-    """
-    logger.info(f"Training request for model: {model_name}")
-    
-    # TODO: Implement model training pipeline
-    return {
-        "job_id": f"JOB-{datetime.utcnow().timestamp()}",
-        "model_name": model_name,
-        "status": "queued",
-        "message": "Model training - implementation pending"
-    }
+@app.get("/models")
+async def get_models(model_name: Optional[str] = None):
+    """Get model information"""
+    try:
+        if model_name is not None:
+            result = ml_service.get_model_info(model_name)
+        else:
+            result = ml_service.get_model_info()
+        return result
+    except Exception as e:
+        logger.error(f"Error getting model info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/models/{model_name}")
+async def get_model_info(model_name: str):
+    """Get specific model information"""
+    try:
+        result = ml_service.get_model_info(model_name)
+        if not result.get('success'):
+            raise HTTPException(status_code=404, detail=result.get('error'))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting model info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    port = int(os.getenv("API_PORT", 8000))
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=port,
-        reload=True if os.getenv("NODE_ENV") == "development" else False,
+        port=8000,
+        reload=True,
         log_level="info"
     )
