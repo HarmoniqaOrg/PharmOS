@@ -1,0 +1,62 @@
+[
+  {
+    "title": "Novel Cardiovascular Drug Targets Identified Through AI-Driven Analysis",
+    "abstract": "Using advanced machine learning algorithms, we identified several promising drug targets for cardiovascular disease treatment...",
+    "authors": [
+      "Smith, J.",
+      "Johnson, M.",
+      "Chen, L."
+    ],
+    "journal": "Nature Medicine",
+    "year": 2024,
+    "pmid": "38456789"
+  },
+  {
+    "title": "Machine Learning Approaches in Drug Discovery: A Comprehensive Review",
+    "abstract": "This review examines the current state of machine learning applications in pharmaceutical research...",
+    "authors": [
+      "Williams, R.",
+      "Davis, K.",
+      "Thompson, A."
+    ],
+    "journal": "Journal of Medicinal Chemistry",
+    "year": 2024,
+    "pmid": "38456790"
+  },
+  {
+    "title": "Safety Profile of Novel Anti-Hypertensive Compounds",
+    "abstract": "We evaluated the safety and efficacy of new anti-hypertensive drugs in phase 2 clinical trials...",
+    "authors": [
+      "Garcia, M.",
+      "Lee, S.",
+      "Patel, N."
+    ],
+    "journal": "Circulation",
+    "year": 2023,
+    "pmid": "38456791"
+  },
+  {
+    "title": "Artificial Intelligence in Clinical Trial Design and Patient Recruitment",
+    "abstract": "AI-powered tools significantly improved patient matching and trial design efficiency...",
+    "authors": [
+      "Brown, D.",
+      "Miller, E.",
+      "Wilson, T."
+    ],
+    "journal": "Clinical Trials",
+    "year": 2024,
+    "pmid": "38456792"
+  },
+  {
+    "title": "Biomarkers for Early Detection of Cardiotoxicity in Cancer Therapy",
+    "abstract": "Novel biomarkers show promise for early detection of cardiac complications in oncology patients...",
+    "authors": [
+      "Anderson, P.",
+      "Taylor, R.",
+      "Martin, S."
+    ],
+    "journal": "JACC: CardioOncology",
+    "year": 2023,
+    "pmid": "38456793"
+  }
+]

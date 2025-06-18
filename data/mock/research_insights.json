@@ -1,0 +1,67 @@
+[
+  {
+    "insight_id": "INS-41G3D0G0",
+    "topic": "Cardiovascular",
+    "summary": "Recent advances in Cardiovascular research show promising therapeutic targets",
+    "key_findings": [
+      "Discovery of novel cardiovascular biomarkers",
+      "AI models predict 92% success rate",
+      "3 new drug candidates identified"
+    ],
+    "papers_analyzed": 127,
+    "confidence_score": 0.84,
+    "generated_date": "2025-06-18T12:20:27.137378"
+  },
+  {
+    "insight_id": "INS-33FX29R4",
+    "topic": "Oncology",
+    "summary": "Recent advances in Oncology research show promising therapeutic targets",
+    "key_findings": [
+      "Discovery of novel oncology biomarkers",
+      "AI models predict 94% success rate",
+      "10 new drug candidates identified"
+    ],
+    "papers_analyzed": 133,
+    "confidence_score": 0.88,
+    "generated_date": "2025-06-18T12:20:27.137394"
+  },
+  {
+    "insight_id": "INS-MQELXTW5",
+    "topic": "Neurology",
+    "summary": "Recent advances in Neurology research show promising therapeutic targets",
+    "key_findings": [
+      "Discovery of novel neurology biomarkers",
+      "AI models predict 76% success rate",
+      "8 new drug candidates identified"
+    ],
+    "papers_analyzed": 181,
+    "confidence_score": 0.94,
+    "generated_date": "2025-06-18T12:20:27.137400"
+  },
+  {
+    "insight_id": "INS-JMVZABRM",
+    "topic": "Immunology",
+    "summary": "Recent advances in Immunology research show promising therapeutic targets",
+    "key_findings": [
+      "Discovery of novel immunology biomarkers",
+      "AI models predict 94% success rate",
+      "7 new drug candidates identified"
+    ],
+    "papers_analyzed": 115,
+    "confidence_score": 0.92,
+    "generated_date": "2025-06-18T12:20:27.137406"
+  },
+  {
+    "insight_id": "INS-YKOD66Z4",
+    "topic": "Metabolic",
+    "summary": "Recent advances in Metabolic research show promising therapeutic targets",
+    "key_findings": [
+      "Discovery of novel metabolic biomarkers",
+      "AI models predict 87% success rate",
+      "4 new drug candidates identified"
+    ],
+    "papers_analyzed": 67,
+    "confidence_score": 0.76,
+    "generated_date": "2025-06-18T12:20:27.137411"
+  }
+]

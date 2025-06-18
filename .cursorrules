@@ -1,0 +1,31 @@
+# PharmOS Development Rules
+
+## Code Style
+- Use ESLint and Prettier for JavaScript/TypeScript
+- Use Black and Flake8 for Python
+- Maintain consistent naming conventions
+- Write self-documenting code
+
+## Architecture Guidelines
+- Follow microservices patterns
+- Implement proper error handling
+- Use dependency injection
+- Write comprehensive tests
+
+## Security Best Practices
+- Never commit secrets or API keys
+- Validate all inputs
+- Use parameterized queries
+- Implement rate limiting
+
+## Performance Requirements
+- API responses < 100ms
+- Database queries optimized
+- Implement caching strategies
+- Monitor memory usage
+
+## Documentation Standards
+- Update README for new features
+- Document all API endpoints
+- Include code examples
+- Maintain changelog

@@ -1,0 +1,54 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "node",
+      "args": ["./node_modules/@modelcontextprotocol/server-postgres/dist/index.js"],
+      "env": {
+        "POSTGRES_CONNECTION_STRING": "postgresql://pharmos_user:pharmos_pass@localhost:5432/pharmos_db"
+      }
+    },
+    "filesystem": {
+      "command": "node",
+      "args": ["./node_modules/@modelcontextprotocol/server-filesystem/dist/index.js"],
+      "env": {
+        "ROOT_PATH": "/mnt/d/PharmOS"
+      }
+    },
+    "github": {
+      "command": "node",
+      "args": ["./node_modules/@modelcontextprotocol/server-github/dist/index.js"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "web": {
+      "command": "node",
+      "args": ["./node_modules/@modelcontextprotocol/server-web/dist/index.js"],
+      "env": {
+        "ALLOWED_DOMAINS": "pubmed.ncbi.nlm.nih.gov,clinicaltrials.gov,fda.gov"
+      }
+    }
+  },
+  "agents": {
+    "research": {
+      "enabled": true,
+      "endpoint": "http://localhost:8001/agent/research",
+      "capabilities": ["literature_search", "paper_analysis", "citation_mapping"]
+    },
+    "molecule": {
+      "enabled": true,
+      "endpoint": "http://localhost:8002/agent/molecule",
+      "capabilities": ["structure_generation", "property_prediction", "similarity_search"]
+    },
+    "clinical": {
+      "enabled": true,
+      "endpoint": "http://localhost:8003/agent/clinical",
+      "capabilities": ["trial_design", "patient_matching", "protocol_optimization"]
+    },
+    "safety": {
+      "enabled": true,
+      "endpoint": "http://localhost:8004/agent/safety",
+      "capabilities": ["adverse_event_detection", "risk_assessment", "signal_detection"]
+    }
+  }
+}

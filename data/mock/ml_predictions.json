@@ -1,0 +1,77 @@
+[
+  {
+    "molecule_id": "MOL-OYFLG8GO",
+    "smiles": "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+    "name": "Ibuprofen",
+    "predictions": {
+      "toxicity_score": 0.188,
+      "bioavailability": 0.375,
+      "half_life_hours": 10.8,
+      "logP": 1.9,
+      "solubility_mg_ml": 52.77,
+      "binding_affinity_nm": 232.8
+    },
+    "confidence": 0.9,
+    "timestamp": "2025-06-18T12:20:27.132111"
+  },
+  {
+    "molecule_id": "MOL-WFXM1X53",
+    "smiles": "CC(=O)Oc1ccccc1C(=O)O",
+    "name": "Aspirin",
+    "predictions": {
+      "toxicity_score": 0.645,
+      "bioavailability": 0.878,
+      "half_life_hours": 11.7,
+      "logP": 1.11,
+      "solubility_mg_ml": 54.58,
+      "binding_affinity_nm": 435.7
+    },
+    "confidence": 0.95,
+    "timestamp": "2025-06-18T12:20:27.132141"
+  },
+  {
+    "molecule_id": "MOL-BJILVH93",
+    "smiles": "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+    "name": "Caffeine",
+    "predictions": {
+      "toxicity_score": 0.599,
+      "bioavailability": 0.481,
+      "half_life_hours": 5.0,
+      "logP": -1.65,
+      "solubility_mg_ml": 96.2,
+      "binding_affinity_nm": 367.6
+    },
+    "confidence": 0.76,
+    "timestamp": "2025-06-18T12:20:27.132150"
+  },
+  {
+    "molecule_id": "MOL-JZUBVNUN",
+    "smiles": "CC1=C(C(=O)N(N1C)C2=CC=CC=C2)N(C)C",
+    "name": "Antipyrine",
+    "predictions": {
+      "toxicity_score": 0.766,
+      "bioavailability": 0.394,
+      "half_life_hours": 2.8,
+      "logP": 3.7,
+      "solubility_mg_ml": 67.4,
+      "binding_affinity_nm": 886.8
+    },
+    "confidence": 0.72,
+    "timestamp": "2025-06-18T12:20:27.132156"
+  },
+  {
+    "molecule_id": "MOL-88E46KIM",
+    "smiles": "CC(C)NCC(COC1=CC=CC2=C1CCCC2=O)O",
+    "name": "Propranolol",
+    "predictions": {
+      "toxicity_score": 0.786,
+      "bioavailability": 0.875,
+      "half_life_hours": 9.2,
+      "logP": 0.43,
+      "solubility_mg_ml": 1.76,
+      "binding_affinity_nm": 902.7
+    },
+    "confidence": 0.79,
+    "timestamp": "2025-06-18T12:20:27.132162"
+  }
+]

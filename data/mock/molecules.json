@@ -1,0 +1,42 @@
+[
+  {
+    "smiles": "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+    "name": "Ibuprofen"
+  },
+  {
+    "smiles": "CC(=O)Oc1ccccc1C(=O)O",
+    "name": "Aspirin"
+  },
+  {
+    "smiles": "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+    "name": "Caffeine"
+  },
+  {
+    "smiles": "CC1=C(C(=O)N(N1C)C2=CC=CC=C2)N(C)C",
+    "name": "Antipyrine"
+  },
+  {
+    "smiles": "CC(C)NCC(COC1=CC=CC2=C1CCCC2=O)O",
+    "name": "Propranolol"
+  },
+  {
+    "smiles": "CN1CCC[C@H]1C2=CN=CC=C2",
+    "name": "Nicotine"
+  },
+  {
+    "smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)C3=CC=CC=C3)C(=O)N2[C@H]1C(=O)O",
+    "name": "Ampicillin"
+  },
+  {
+    "smiles": "CC(C)(C)NCC(COC1=NSN=C1N2CCOCC2)O",
+    "name": "Timolol"
+  },
+  {
+    "smiles": "CCN(CC)C(=O)C1=CC=C(C=C1)N",
+    "name": "Procainamide"
+  },
+  {
+    "smiles": "CN1CCN(CC1)C2=NC3=C(C=CC(=C3)Cl)NC4=C2C=CC(=C4)Cl",
+    "name": "Clozapine"
+  }
+]

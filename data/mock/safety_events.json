@@ -1,0 +1,222 @@
+[
+  {
+    "event_id": "EVT-74NBZFUG",
+    "drug_name": "CardioShield",
+    "event_type": "Dizziness",
+    "severity": "Severe",
+    "patient_age": 44,
+    "gender": "F",
+    "outcome": "Resolved",
+    "reported_date": "2025-03-30",
+    "description": "Patient experienced elevated liver enzymes after 12 days of treatment"
+  },
+  {
+    "event_id": "EVT-VHNPOAOG",
+    "drug_name": "AIM-247",
+    "event_type": "Fatigue",
+    "severity": "Mild",
+    "patient_age": 26,
+    "gender": "F",
+    "outcome": "Ongoing",
+    "reported_date": "2025-03-29",
+    "description": "Patient experienced tachycardia after 8 days of treatment"
+  },
+  {
+    "event_id": "EVT-2GISR584",
+    "drug_name": "AIM-247",
+    "event_type": "Constipation",
+    "severity": "Mild",
+    "patient_age": 61,
+    "gender": "F",
+    "outcome": "Resolved",
+    "reported_date": "2025-05-10",
+    "description": "Patient experienced nausea after 8 days of treatment"
+  },
+  {
+    "event_id": "EVT-JRAKWQ0D",
+    "drug_name": "CardioShield",
+    "event_type": "Hypertension",
+    "severity": "Moderate",
+    "patient_age": 55,
+    "gender": "F",
+    "outcome": "Resolved",
+    "reported_date": "2025-05-13",
+    "description": "Patient experienced hypotension after 2 days of treatment"
+  },
+  {
+    "event_id": "EVT-7G8GXRHT",
+    "drug_name": "AIM-247",
+    "event_type": "Elevated liver enzymes",
+    "severity": "Severe",
+    "patient_age": 36,
+    "gender": "F",
+    "outcome": "Resolved",
+    "reported_date": "2025-05-23",
+    "description": "Patient experienced constipation after 6 days of treatment"
+  },
+  {
+    "event_id": "EVT-JHM6YL3S",
+    "drug_name": "MetaboFix",
+    "event_type": "Muscle pain",
+    "severity": "Moderate",
+    "patient_age": 41,
+    "gender": "M",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-04-26",
+    "description": "Patient experienced dry mouth after 4 days of treatment"
+  },
+  {
+    "event_id": "EVT-62TMPOMH",
+    "drug_name": "PharmOS-001",
+    "event_type": "Dizziness",
+    "severity": "Moderate",
+    "patient_age": 39,
+    "gender": "M",
+    "outcome": "Resolved",
+    "reported_date": "2025-06-05",
+    "description": "Patient experienced insomnia after 24 days of treatment"
+  },
+  {
+    "event_id": "EVT-HPAJ3L6Z",
+    "drug_name": "PharmOS-001",
+    "event_type": "Hypertension",
+    "severity": "Mild",
+    "patient_age": 75,
+    "gender": "F",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-04-16",
+    "description": "Patient experienced constipation after 9 days of treatment"
+  },
+  {
+    "event_id": "EVT-MDTXMBWX",
+    "drug_name": "CardioShield",
+    "event_type": "Hypotension",
+    "severity": "Mild",
+    "patient_age": 49,
+    "gender": "F",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-04-03",
+    "description": "Patient experienced pruritus after 18 days of treatment"
+  },
+  {
+    "event_id": "EVT-897Z3M1B",
+    "drug_name": "NeuroProtect",
+    "event_type": "Nausea",
+    "severity": "Moderate",
+    "patient_age": 50,
+    "gender": "M",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-06-11",
+    "description": "Patient experienced hypotension after 22 days of treatment"
+  },
+  {
+    "event_id": "EVT-7ODRNZXP",
+    "drug_name": "CardioShield",
+    "event_type": "Bradycardia",
+    "severity": "Mild",
+    "patient_age": 34,
+    "gender": "M",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-03-23",
+    "description": "Patient experienced nausea after 12 days of treatment"
+  },
+  {
+    "event_id": "EVT-JLCMKJFG",
+    "drug_name": "AIM-247",
+    "event_type": "Nausea",
+    "severity": "Mild",
+    "patient_age": 63,
+    "gender": "M",
+    "outcome": "Ongoing",
+    "reported_date": "2025-06-13",
+    "description": "Patient experienced dry mouth after 2 days of treatment"
+  },
+  {
+    "event_id": "EVT-IO96GW2O",
+    "drug_name": "NeuroProtect",
+    "event_type": "Joint pain",
+    "severity": "Mild",
+    "patient_age": 31,
+    "gender": "F",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-05-28",
+    "description": "Patient experienced elevated liver enzymes after 22 days of treatment"
+  },
+  {
+    "event_id": "EVT-RFZK43UV",
+    "drug_name": "MetaboFix",
+    "event_type": "Elevated liver enzymes",
+    "severity": "Moderate",
+    "patient_age": 46,
+    "gender": "M",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-04-25",
+    "description": "Patient experienced nausea after 7 days of treatment"
+  },
+  {
+    "event_id": "EVT-ZFZJNT61",
+    "drug_name": "CardioShield",
+    "event_type": "Muscle pain",
+    "severity": "Severe",
+    "patient_age": 52,
+    "gender": "F",
+    "outcome": "Resolved",
+    "reported_date": "2025-04-26",
+    "description": "Patient experienced hypertension after 12 days of treatment"
+  },
+  {
+    "event_id": "EVT-97WM5UXE",
+    "drug_name": "AIM-247",
+    "event_type": "Constipation",
+    "severity": "Mild",
+    "patient_age": 58,
+    "gender": "M",
+    "outcome": "Resolved",
+    "reported_date": "2025-06-14",
+    "description": "Patient experienced hypertension after 18 days of treatment"
+  },
+  {
+    "event_id": "EVT-7G0ZDYT3",
+    "drug_name": "AIM-247",
+    "event_type": "Tachycardia",
+    "severity": "Moderate",
+    "patient_age": 26,
+    "gender": "F",
+    "outcome": "Resolved",
+    "reported_date": "2025-05-10",
+    "description": "Patient experienced headache after 21 days of treatment"
+  },
+  {
+    "event_id": "EVT-5EOKSWFG",
+    "drug_name": "NeuroProtect",
+    "event_type": "Fatigue",
+    "severity": "Mild",
+    "patient_age": 72,
+    "gender": "F",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-03-31",
+    "description": "Patient experienced rash after 20 days of treatment"
+  },
+  {
+    "event_id": "EVT-B56EBZBA",
+    "drug_name": "CardioShield",
+    "event_type": "Insomnia",
+    "severity": "Moderate",
+    "patient_age": 35,
+    "gender": "M",
+    "outcome": "Resolved",
+    "reported_date": "2025-05-29",
+    "description": "Patient experienced tachycardia after 17 days of treatment"
+  },
+  {
+    "event_id": "EVT-8NDNMNAE",
+    "drug_name": "MetaboFix",
+    "event_type": "Pruritus",
+    "severity": "Severe",
+    "patient_age": 75,
+    "gender": "M",
+    "outcome": "Resolved with sequelae",
+    "reported_date": "2025-05-24",
+    "description": "Patient experienced constipation after 27 days of treatment"
+  }
+]
