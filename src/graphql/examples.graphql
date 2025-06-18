@@ -1,0 +1,648 @@
+# PharmOS GraphQL Examples
+# This file contains example queries and mutations for testing and development
+
+# =========================
+# BASIC QUERIES
+# =========================
+
+# Get current user information
+query GetCurrentUser {
+  me {
+    id
+    email
+    username
+    firstName
+    lastName
+    role
+    department
+    permissions
+    lastLogin
+  }
+}
+
+# Get all molecules with basic information
+query GetAllMolecules {
+  molecules(pagination: { page: 1, limit: 20 }) {
+    data {
+      id
+      name
+      smiles
+      molecularWeight
+      logP
+      createdAt
+    }
+    pagination {
+      page
+      limit
+      total
+      totalPages
+      hasNextPage
+    }
+  }
+}
+
+# Get detailed molecule information with relationships
+query GetMoleculeDetails($moleculeId: ID!) {
+  molecule(id: $moleculeId) {
+    id
+    name
+    smiles
+    molecularWeight
+    logP
+    properties
+    predictions {
+      id
+      modelType
+      confidence
+      toxicityScore
+      bioavailability
+      halfLifeHours
+      timestamp
+    }
+    safetyEvents {
+      id
+      eventType
+      severity
+      outcome
+      patientAge
+      gender
+      reportedDate
+    }
+    clinicalTrials {
+      id
+      trialId
+      title
+      phase
+      status
+      condition
+    }
+    researchPapers {
+      id
+      title
+      journal
+      year
+      authors
+    }
+  }
+}
+
+# Get clinical trials with filtering
+query GetClinicalTrials($filter: ClinicalTrialFilter, $pagination: PaginationInput) {
+  clinicalTrials(filter: $filter, pagination: $pagination) {
+    data {
+      id
+      trialId
+      title
+      phase
+      status
+      condition
+      intervention
+      sponsor
+      enrollment
+      startDate
+      completionDate
+      molecules {
+        name
+        smiles
+      }
+    }
+    pagination {
+      page
+      total
+      hasNextPage
+    }
+  }
+}
+
+# Get safety events with comprehensive details
+query GetSafetyEvents($filter: SafetyEventFilter) {
+  safetyEvents(filter: $filter, pagination: { limit: 50 }) {
+    data {
+      id
+      eventId
+      drugName
+      eventType
+      severity
+      patientAge
+      gender
+      outcome
+      reportedDate
+      description
+      daysToOnset
+      molecule {
+        name
+        smiles
+      }
+      clinicalTrial {
+        trialId
+        title
+      }
+    }
+  }
+}
+
+# =========================
+# SEARCH QUERIES
+# =========================
+
+# Search molecules by name or SMILES
+query SearchMolecules($query: String!) {
+  searchMolecules(query: $query, pagination: { limit: 10 }) {
+    data {
+      id
+      name
+      smiles
+      predictions {
+        toxicityScore
+        bioavailability
+        confidence
+      }
+    }
+  }
+}
+
+# Find similar molecules
+query FindSimilarMolecules($smiles: String!, $threshold: Float!) {
+  similarMolecules(smiles: $smiles, threshold: $threshold, limit: 10) {
+    id
+    name
+    smiles
+    molecularWeight
+    logP
+  }
+}
+
+# Search research papers
+query SearchResearchPapers($query: String!) {
+  searchResearchPapers(query: $query, pagination: { limit: 20 }) {
+    data {
+      id
+      title
+      abstract
+      authors
+      journal
+      year
+      pmid
+      molecules {
+        name
+        smiles
+      }
+    }
+  }
+}
+
+# =========================
+# ANALYTICS QUERIES
+# =========================
+
+# Get molecule analytics
+query GetMoleculeAnalytics($filter: MoleculeFilter) {
+  moleculeAnalytics(filter: $filter) {
+    totalCount
+    byProperty
+    predictionsCount
+    safetyEventsCount
+  }
+}
+
+# Get clinical trial analytics
+query GetClinicalTrialAnalytics {
+  clinicalTrialAnalytics {
+    totalCount
+    byPhase
+    byStatus
+    byCondition
+    enrollmentStats
+  }
+}
+
+# Get safety analytics with filtering
+query GetSafetyAnalytics($filter: SafetyEventFilter) {
+  safetyAnalytics(filter: $filter) {
+    totalEvents
+    bySeverity
+    byOutcome
+    byEventType
+    byAge
+    byGender
+  }
+}
+
+# =========================
+# RESEARCH INSIGHTS
+# =========================
+
+# Get research insights
+query GetResearchInsights($filter: ResearchInsightFilter) {
+  researchInsights(filter: $filter, pagination: { limit: 10 }) {
+    data {
+      id
+      insightId
+      topic
+      summary
+      keyFindings
+      papersAnalyzed
+      confidenceScore
+      generatedDate
+      recommendations
+      therapeuticTargets
+      drugCandidates
+      relatedPapers {
+        title
+        journal
+        year
+      }
+    }
+  }
+}
+
+# =========================
+# MUTATIONS - CREATE
+# =========================
+
+# Create a new molecule
+mutation CreateMolecule($input: MoleculeInput!) {
+  createMolecule(input: $input) {
+    id
+    name
+    smiles
+    molecularWeight
+    logP
+    createdAt
+  }
+}
+
+# Example variables for CreateMolecule:
+# {
+#   "input": {
+#     "name": "Example Compound",
+#     "smiles": "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+#     "properties": {
+#       "source": "synthetic",
+#       "category": "analgesic"
+#     }
+#   }
+# }
+
+# Create a clinical trial
+mutation CreateClinicalTrial($input: ClinicalTrialInput!) {
+  createClinicalTrial(input: $input) {
+    id
+    trialId
+    title
+    phase
+    status
+    condition
+    sponsor
+    enrollment
+    startDate
+  }
+}
+
+# Example variables for CreateClinicalTrial:
+# {
+#   "input": {
+#     "trialId": "NCT12345678",
+#     "title": "Phase 2 Study of New Compound",
+#     "phase": "PHASE_2",
+#     "status": "RECRUITING",
+#     "condition": "Hypertension",
+#     "intervention": "Test Drug vs Placebo",
+#     "sponsor": "PharmOS Research",
+#     "enrollment": 100,
+#     "startDate": "2024-01-01T00:00:00Z",
+#     "moleculeIds": ["mol_id_1", "mol_id_2"]
+#   }
+# }
+
+# Create a safety event
+mutation CreateSafetyEvent($input: SafetyEventInput!) {
+  createSafetyEvent(input: $input) {
+    id
+    eventId
+    drugName
+    eventType
+    severity
+    patientAge
+    gender
+    outcome
+    reportedDate
+  }
+}
+
+# Create research paper
+mutation CreateResearchPaper($input: ResearchPaperInput!) {
+  createResearchPaper(input: $input) {
+    id
+    title
+    journal
+    year
+    pmid
+    authors
+  }
+}
+
+# =========================
+# MUTATIONS - UPDATE
+# =========================
+
+# Update molecule information
+mutation UpdateMolecule($id: ID!, $input: MoleculeUpdateInput!) {
+  updateMolecule(id: $id, input: $input) {
+    id
+    name
+    smiles
+    properties
+    updatedAt
+  }
+}
+
+# Update clinical trial
+mutation UpdateClinicalTrial($id: ID!, $input: ClinicalTrialUpdateInput!) {
+  updateClinicalTrial(id: $id, input: $input) {
+    id
+    trialId
+    title
+    phase
+    status
+    updatedAt
+  }
+}
+
+# =========================
+# MUTATIONS - ML OPERATIONS
+# =========================
+
+# Request ML prediction for a molecule
+mutation RequestPrediction($moleculeId: ID!, $modelType: PredictionModel!) {
+  requestPrediction(moleculeId: $moleculeId, modelType: $modelType) {
+    id
+    moleculeId
+    modelType
+    predictions
+    confidence
+    timestamp
+    toxicityScore
+    bioavailability
+    halfLifeHours
+  }
+}
+
+# Generate new molecules based on scaffold
+mutation GenerateMolecules($scaffold: String!, $count: Int) {
+  generateMolecules(scaffold: $scaffold, count: $count) {
+    id
+    name
+    smiles
+    molecularWeight
+    properties
+  }
+}
+
+# Generate research insight
+mutation GenerateInsight($topic: ResearchTopic!, $paperIds: [ID!]!) {
+  generateInsight(topic: $topic, paperIds: $paperIds) {
+    id
+    insightId
+    topic
+    summary
+    keyFindings
+    confidenceScore
+    generatedDate
+  }
+}
+
+# =========================
+# MUTATIONS - BATCH OPERATIONS
+# =========================
+
+# Create multiple molecules
+mutation CreateMoleculesBatch($molecules: [MoleculeInput!]!) {
+  createMoleculesBatch(molecules: $molecules) {
+    id
+    name
+    smiles
+    createdAt
+  }
+}
+
+# =========================
+# MUTATIONS - ASSOCIATIONS
+# =========================
+
+# Link molecule to clinical trial
+mutation LinkMoleculeToTrial($moleculeId: ID!, $trialId: ID!) {
+  linkMoleculeToTrial(moleculeId: $moleculeId, trialId: $trialId)
+}
+
+# Link research paper to molecule
+mutation LinkPaperToMolecule($paperId: ID!, $moleculeId: ID!) {
+  linkPaperToMolecule(paperId: $paperId, moleculeId: $moleculeId)
+}
+
+# =========================
+# SUBSCRIPTIONS
+# =========================
+
+# Subscribe to new molecules
+subscription NewMolecules {
+  moleculeCreated {
+    id
+    name
+    smiles
+    createdAt
+  }
+}
+
+# Subscribe to safety events
+subscription SafetyEventUpdates {
+  safetyEventCreated {
+    id
+    eventId
+    drugName
+    eventType
+    severity
+    patientAge
+    reportedDate
+  }
+}
+
+# Subscribe to ML prediction completion
+subscription MLPredictionUpdates($moleculeId: ID) {
+  mlPredictionCompleted(moleculeId: $moleculeId) {
+    id
+    predictions
+    confidence
+    molecule {
+      name
+      smiles
+    }
+  }
+}
+
+# Subscribe to clinical trial updates
+subscription ClinicalTrialUpdates($id: ID) {
+  clinicalTrialUpdated(id: $id) {
+    id
+    trialId
+    title
+    status
+    updatedAt
+  }
+}
+
+# Subscribe to new research insights
+subscription ResearchInsightUpdates($topic: ResearchTopic) {
+  researchInsightGenerated(topic: $topic) {
+    id
+    topic
+    summary
+    keyFindings
+    confidenceScore
+  }
+}
+
+# Subscribe to activity feed
+subscription ActivityFeed {
+  recentActivity
+}
+
+# Subscribe to user notifications
+subscription UserNotifications($userId: ID!) {
+  notifications(userId: $userId)
+}
+
+# =========================
+# COMPLEX QUERIES
+# =========================
+
+# Get comprehensive dashboard data
+query GetDashboardData {
+  moleculeAnalytics {
+    totalCount
+    predictionsCount
+    safetyEventsCount
+  }
+  
+  clinicalTrialAnalytics {
+    totalCount
+    byPhase
+    byStatus
+  }
+  
+  safetyAnalytics {
+    totalEvents
+    bySeverity
+  }
+  
+  recentMolecules: molecules(pagination: { limit: 5, sortBy: "createdAt" }) {
+    data {
+      id
+      name
+      smiles
+      createdAt
+    }
+  }
+  
+  activeClinicalTrials: clinicalTrials(
+    filter: { status: ACTIVE }
+    pagination: { limit: 5 }
+  ) {
+    data {
+      id
+      trialId
+      title
+      phase
+      enrollment
+    }
+  }
+}
+
+# Get molecule with all related entities
+query GetMoleculeEcosystem($moleculeId: ID!) {
+  molecule(id: $moleculeId) {
+    id
+    name
+    smiles
+    properties
+    
+    predictions {
+      id
+      modelType
+      predictions
+      confidence
+      timestamp
+    }
+    
+    safetyEvents {
+      id
+      eventType
+      severity
+      outcome
+      reportedDate
+      clinicalTrial {
+        trialId
+        title
+      }
+    }
+    
+    clinicalTrials {
+      id
+      trialId
+      title
+      phase
+      status
+      condition
+      enrollment
+      publications {
+        title
+        journal
+        year
+      }
+    }
+    
+    researchPapers {
+      id
+      title
+      abstract
+      journal
+      year
+      authors
+      researchInsights {
+        topic
+        summary
+        confidenceScore
+      }
+    }
+  }
+}
+
+# Search across multiple entity types
+query GlobalSearch($query: String!) {
+  molecules: searchMolecules(query: $query, pagination: { limit: 5 }) {
+    data {
+      id
+      name
+      smiles
+    }
+  }
+  
+  trials: searchClinicalTrials(query: $query, pagination: { limit: 5 }) {
+    data {
+      id
+      trialId
+      title
+      phase
+      status
+    }
+  }
+  
+  papers: searchResearchPapers(query: $query, pagination: { limit: 5 }) {
+    data {
+      id
+      title
+      journal
+      year
+    }
+  }
+}

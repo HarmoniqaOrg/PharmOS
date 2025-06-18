@@ -1,0 +1,690 @@
+# PharmOS GraphQL Schema
+# Version: 1.0.0
+# Description: Comprehensive schema for pharmaceutical research platform
+
+scalar DateTime
+scalar JSON
+
+# =========================
+# ENUMS
+# =========================
+
+enum TrialPhase {
+  PHASE_1
+  PHASE_2
+  PHASE_3
+  PHASE_4
+  PRECLINICAL
+}
+
+enum TrialStatus {
+  RECRUITING
+  ACTIVE
+  ENROLLING
+  COMPLETED
+  SUSPENDED
+  WITHDRAWN
+  TERMINATED
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectType {
+  DRUG_DISCOVERY
+  CLINICAL_DEVELOPMENT
+  REGULATORY
+  RESEARCH
+  SAFETY_MONITORING
+}
+
+enum SafetyEventSeverity {
+  MILD
+  MODERATE
+  SEVERE
+  LIFE_THREATENING
+}
+
+enum SafetyEventOutcome {
+  ONGOING
+  RESOLVED
+  RESOLVED_WITH_SEQUELAE
+  NOT_RECOVERED
+  FATAL
+}
+
+enum Gender {
+  M
+  F
+  OTHER
+  UNKNOWN
+}
+
+enum ResearchTopic {
+  CARDIOVASCULAR
+  ONCOLOGY
+  NEUROLOGY
+  IMMUNOLOGY
+  METABOLIC
+  INFECTIOUS_DISEASE
+  RESPIRATORY
+  ENDOCRINE
+  OTHER
+}
+
+enum PredictionModel {
+  TOXICITY
+  BIOAVAILABILITY
+  SOLUBILITY
+  ADMET
+  ACTIVITY
+  SIMILARITY
+}
+
+# =========================
+# CORE TYPES
+# =========================
+
+type User {
+  id: ID!
+  email: String!
+  username: String!
+  firstName: String
+  lastName: String
+  role: String!
+  department: String
+  permissions: [String!]!
+  isActive: Boolean!
+  lastLogin: DateTime
+  projects: [Project!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Molecule {
+  id: ID!
+  smiles: String!
+  name: String!
+  molecularWeight: Float
+  logP: Float
+  properties: JSON
+  predictions: [MLPrediction!]!
+  safetyEvents: [SafetyEvent!]!
+  clinicalTrials: [ClinicalTrial!]!
+  projects: [Project!]!
+  researchPapers: [ResearchPaper!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Project {
+  id: ID!
+  name: String!
+  description: String
+  status: ProjectStatus!
+  type: ProjectType!
+  startDate: DateTime!
+  endDate: DateTime
+  budget: Float
+  team: [User!]!
+  lead: User
+  molecules: [Molecule!]!
+  clinicalTrials: [ClinicalTrial!]!
+  researchPapers: [ResearchPaper!]!
+  progress: Float
+  milestones: [String!]
+  tags: [String!]
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ClinicalTrial {
+  id: ID!
+  trialId: String!
+  title: String!
+  phase: TrialPhase!
+  status: TrialStatus!
+  condition: String!
+  intervention: String!
+  sponsor: String!
+  enrollment: Int!
+  startDate: DateTime!
+  completionDate: DateTime
+  description: String
+  primaryEndpoint: String
+  secondaryEndpoints: [String!]
+  eligibilityCriteria: String
+  locations: [String!]
+  project: Project
+  molecules: [Molecule!]!
+  safetyEvents: [SafetyEvent!]!
+  publications: [ResearchPaper!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ResearchPaper {
+  id: ID!
+  pmid: String
+  title: String!
+  abstract: String!
+  authors: [String!]!
+  journal: String!
+  year: Int!
+  doi: String
+  keywords: [String!]
+  fullText: String
+  citationCount: Int
+  project: Project
+  molecules: [Molecule!]!
+  clinicalTrials: [ClinicalTrial!]!
+  researchInsights: [ResearchInsight!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type SafetyEvent {
+  id: ID!
+  eventId: String!
+  drugName: String!
+  eventType: String!
+  severity: SafetyEventSeverity!
+  patientAge: Int!
+  gender: Gender!
+  outcome: SafetyEventOutcome!
+  reportedDate: DateTime!
+  description: String!
+  daysToOnset: Int
+  doseAtOnset: Float
+  concomitantMeds: [String!]
+  medicalHistory: [String!]
+  molecule: Molecule
+  clinicalTrial: ClinicalTrial
+  reportedBy: User
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type MLPrediction {
+  id: ID!
+  moleculeId: String!
+  modelType: PredictionModel!
+  modelVersion: String!
+  predictions: JSON!
+  confidence: Float!
+  timestamp: DateTime!
+  molecule: Molecule!
+  
+  # Specific prediction fields for convenience
+  toxicityScore: Float
+  bioavailability: Float
+  halfLifeHours: Float
+  logP: Float
+  solubilityMgMl: Float
+  bindingAffinityNm: Float
+}
+
+type ResearchInsight {
+  id: ID!
+  insightId: String!
+  topic: ResearchTopic!
+  summary: String!
+  keyFindings: [String!]!
+  papersAnalyzed: Int!
+  confidenceScore: Float!
+  generatedDate: DateTime!
+  relatedPapers: [ResearchPaper!]!
+  recommendations: [String!]
+  therapeuticTargets: [String!]
+  drugCandidates: [String!]
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# =========================
+# INPUT TYPES
+# =========================
+
+input MoleculeInput {
+  smiles: String!
+  name: String!
+  properties: JSON
+}
+
+input MoleculeUpdateInput {
+  smiles: String
+  name: String
+  properties: JSON
+}
+
+input ProjectInput {
+  name: String!
+  description: String
+  status: ProjectStatus!
+  type: ProjectType!
+  startDate: DateTime!
+  endDate: DateTime
+  budget: Float
+  leadId: ID
+  teamIds: [ID!]
+  moleculeIds: [ID!]
+  milestones: [String!]
+  tags: [String!]
+}
+
+input ProjectUpdateInput {
+  name: String
+  description: String
+  status: ProjectStatus
+  type: ProjectType
+  startDate: DateTime
+  endDate: DateTime
+  budget: Float
+  leadId: ID
+  teamIds: [ID!]
+  moleculeIds: [ID!]
+  progress: Float
+  milestones: [String!]
+  tags: [String!]
+}
+
+input ClinicalTrialInput {
+  trialId: String!
+  title: String!
+  phase: TrialPhase!
+  status: TrialStatus!
+  condition: String!
+  intervention: String!
+  sponsor: String!
+  enrollment: Int!
+  startDate: DateTime!
+  completionDate: DateTime
+  description: String
+  primaryEndpoint: String
+  secondaryEndpoints: [String!]
+  eligibilityCriteria: String
+  locations: [String!]
+  projectId: ID
+  moleculeIds: [ID!]
+}
+
+input ClinicalTrialUpdateInput {
+  title: String
+  phase: TrialPhase
+  status: TrialStatus
+  condition: String
+  intervention: String
+  sponsor: String
+  enrollment: Int
+  startDate: DateTime
+  completionDate: DateTime
+  description: String
+  primaryEndpoint: String
+  secondaryEndpoints: [String!]
+  eligibilityCriteria: String
+  locations: [String!]
+  projectId: ID
+  moleculeIds: [ID!]
+}
+
+input ResearchPaperInput {
+  pmid: String
+  title: String!
+  abstract: String!
+  authors: [String!]!
+  journal: String!
+  year: Int!
+  doi: String
+  keywords: [String!]
+  fullText: String
+  projectId: ID
+  moleculeIds: [ID!]
+  clinicalTrialIds: [ID!]
+}
+
+input SafetyEventInput {
+  eventId: String!
+  drugName: String!
+  eventType: String!
+  severity: SafetyEventSeverity!
+  patientAge: Int!
+  gender: Gender!
+  outcome: SafetyEventOutcome!
+  reportedDate: DateTime!
+  description: String!
+  daysToOnset: Int
+  doseAtOnset: Float
+  concomitantMeds: [String!]
+  medicalHistory: [String!]
+  moleculeId: ID
+  clinicalTrialId: ID
+}
+
+input MLPredictionInput {
+  moleculeId: String!
+  modelType: PredictionModel!
+  modelVersion: String!
+  predictions: JSON!
+  confidence: Float!
+}
+
+input ResearchInsightInput {
+  insightId: String!
+  topic: ResearchTopic!
+  summary: String!
+  keyFindings: [String!]!
+  papersAnalyzed: Int!
+  confidenceScore: Float!
+  recommendations: [String!]
+  therapeuticTargets: [String!]
+  drugCandidates: [String!]
+  relatedPaperIds: [ID!]
+}
+
+# Filter inputs for queries
+input MoleculeFilter {
+  name: String
+  smilesContains: String
+  hasMLPredictions: Boolean
+  minMolecularWeight: Float
+  maxMolecularWeight: Float
+  minLogP: Float
+  maxLogP: Float
+  projectId: ID
+}
+
+input ProjectFilter {
+  name: String
+  status: ProjectStatus
+  type: ProjectType
+  leadId: ID
+  teamMemberId: ID
+  startDateAfter: DateTime
+  startDateBefore: DateTime
+  budget: Float
+}
+
+input ClinicalTrialFilter {
+  phase: TrialPhase
+  status: TrialStatus
+  condition: String
+  sponsor: String
+  minEnrollment: Int
+  maxEnrollment: Int
+  startDateAfter: DateTime
+  startDateBefore: DateTime
+  projectId: ID
+}
+
+input SafetyEventFilter {
+  drugName: String
+  eventType: String
+  severity: SafetyEventSeverity
+  outcome: SafetyEventOutcome
+  minAge: Int
+  maxAge: Int
+  gender: Gender
+  reportedAfter: DateTime
+  reportedBefore: DateTime
+}
+
+input ResearchPaperFilter {
+  journal: String
+  yearFrom: Int
+  yearTo: Int
+  authorContains: String
+  keywordContains: String
+  projectId: ID
+}
+
+input ResearchInsightFilter {
+  topic: ResearchTopic
+  minConfidenceScore: Float
+  maxConfidenceScore: Float
+  generatedAfter: DateTime
+  generatedBefore: DateTime
+}
+
+# Pagination input
+input PaginationInput {
+  page: Int = 1
+  limit: Int = 20
+  sortBy: String = "createdAt"
+  sortOrder: String = "DESC"
+}
+
+# =========================
+# RESPONSE TYPES
+# =========================
+
+type PaginationInfo {
+  page: Int!
+  limit: Int!
+  total: Int!
+  totalPages: Int!
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+}
+
+type MoleculePaginatedResponse {
+  data: [Molecule!]!
+  pagination: PaginationInfo!
+}
+
+type ProjectPaginatedResponse {
+  data: [Project!]!
+  pagination: PaginationInfo!
+}
+
+type ClinicalTrialPaginatedResponse {
+  data: [ClinicalTrial!]!
+  pagination: PaginationInfo!
+}
+
+type ResearchPaperPaginatedResponse {
+  data: [ResearchPaper!]!
+  pagination: PaginationInfo!
+}
+
+type SafetyEventPaginatedResponse {
+  data: [SafetyEvent!]!
+  pagination: PaginationInfo!
+}
+
+type ResearchInsightPaginatedResponse {
+  data: [ResearchInsight!]!
+  pagination: PaginationInfo!
+}
+
+# Analytics types
+type MoleculeAnalytics {
+  totalCount: Int!
+  byProperty: JSON!
+  predictionsCount: Int!
+  safetyEventsCount: Int!
+}
+
+type ProjectAnalytics {
+  totalCount: Int!
+  byStatus: JSON!
+  byType: JSON!
+  budgetStats: JSON!
+  progressStats: JSON!
+}
+
+type ClinicalTrialAnalytics {
+  totalCount: Int!
+  byPhase: JSON!
+  byStatus: JSON!
+  byCondition: JSON!
+  enrollmentStats: JSON!
+}
+
+type SafetyAnalytics {
+  totalEvents: Int!
+  bySeverity: JSON!
+  byOutcome: JSON!
+  byEventType: JSON!
+  byAge: JSON!
+  byGender: JSON!
+}
+
+# =========================
+# QUERIES
+# =========================
+
+type Query {
+  # User queries
+  me: User
+  user(id: ID!): User
+  users(filter: String, pagination: PaginationInput): [User!]!
+  
+  # Molecule queries
+  molecule(id: ID!): Molecule
+  moleculeBySmiles(smiles: String!): Molecule
+  molecules(filter: MoleculeFilter, pagination: PaginationInput): MoleculePaginatedResponse!
+  searchMolecules(query: String!, pagination: PaginationInput): MoleculePaginatedResponse!
+  similarMolecules(smiles: String!, threshold: Float = 0.8, limit: Int = 10): [Molecule!]!
+  
+  # Project queries
+  project(id: ID!): Project
+  projects(filter: ProjectFilter, pagination: PaginationInput): ProjectPaginatedResponse!
+  searchProjects(query: String!, pagination: PaginationInput): ProjectPaginatedResponse!
+  myProjects(pagination: PaginationInput): ProjectPaginatedResponse!
+  
+  # Clinical trial queries
+  clinicalTrial(id: ID!): ClinicalTrial
+  clinicalTrialByTrialId(trialId: String!): ClinicalTrial
+  clinicalTrials(filter: ClinicalTrialFilter, pagination: PaginationInput): ClinicalTrialPaginatedResponse!
+  searchClinicalTrials(query: String!, pagination: PaginationInput): ClinicalTrialPaginatedResponse!
+  
+  # Research paper queries
+  researchPaper(id: ID!): ResearchPaper
+  researchPaperByPmid(pmid: String!): ResearchPaper
+  researchPapers(filter: ResearchPaperFilter, pagination: PaginationInput): ResearchPaperPaginatedResponse!
+  searchResearchPapers(query: String!, pagination: PaginationInput): ResearchPaperPaginatedResponse!
+  
+  # Safety event queries
+  safetyEvent(id: ID!): SafetyEvent
+  safetyEvents(filter: SafetyEventFilter, pagination: PaginationInput): SafetyEventPaginatedResponse!
+  searchSafetyEvents(query: String!, pagination: PaginationInput): SafetyEventPaginatedResponse!
+  
+  # ML prediction queries
+  mlPrediction(id: ID!): MLPrediction
+  mlPredictions(moleculeId: ID, modelType: PredictionModel, pagination: PaginationInput): [MLPrediction!]!
+  
+  # Research insight queries
+  researchInsight(id: ID!): ResearchInsight
+  researchInsights(filter: ResearchInsightFilter, pagination: PaginationInput): ResearchInsightPaginatedResponse!
+  
+  # Analytics queries
+  moleculeAnalytics(filter: MoleculeFilter): MoleculeAnalytics!
+  projectAnalytics(filter: ProjectFilter): ProjectAnalytics!
+  clinicalTrialAnalytics(filter: ClinicalTrialFilter): ClinicalTrialAnalytics!
+  safetyAnalytics(filter: SafetyEventFilter): SafetyAnalytics!
+  
+  # Cross-entity queries
+  entitiesForMolecule(moleculeId: ID!): Molecule
+  entitiesForTrial(trialId: ID!): ClinicalTrial
+  entitiesForProject(projectId: ID!): Project
+}
+
+# =========================
+# MUTATIONS
+# =========================
+
+type Mutation {
+  # Molecule mutations
+  createMolecule(input: MoleculeInput!): Molecule!
+  updateMolecule(id: ID!, input: MoleculeUpdateInput!): Molecule!
+  deleteMolecule(id: ID!): Boolean!
+  
+  # Project mutations
+  createProject(input: ProjectInput!): Project!
+  updateProject(id: ID!, input: ProjectUpdateInput!): Project!
+  deleteProject(id: ID!): Boolean!
+  
+  # Clinical trial mutations
+  createClinicalTrial(input: ClinicalTrialInput!): ClinicalTrial!
+  updateClinicalTrial(id: ID!, input: ClinicalTrialUpdateInput!): ClinicalTrial!
+  deleteClinicalTrial(id: ID!): Boolean!
+  
+  # Research paper mutations
+  createResearchPaper(input: ResearchPaperInput!): ResearchPaper!
+  updateResearchPaper(id: ID!, input: ResearchPaperInput!): ResearchPaper!
+  deleteResearchPaper(id: ID!): Boolean!
+  
+  # Safety event mutations
+  createSafetyEvent(input: SafetyEventInput!): SafetyEvent!
+  updateSafetyEvent(id: ID!, input: SafetyEventInput!): SafetyEvent!
+  deleteSafetyEvent(id: ID!): Boolean!
+  
+  # ML prediction mutations
+  createMLPrediction(input: MLPredictionInput!): MLPrediction!
+  requestPrediction(moleculeId: ID!, modelType: PredictionModel!): MLPrediction!
+  
+  # Research insight mutations
+  createResearchInsight(input: ResearchInsightInput!): ResearchInsight!
+  generateInsight(topic: ResearchTopic!, paperIds: [ID!]): ResearchInsight!
+  
+  # Batch operations
+  createMoleculesBatch(molecules: [MoleculeInput!]!): [Molecule!]!
+  updateMoleculesBatch(updates: [MoleculeUpdateInput!]!): [Molecule!]!
+  
+  # ML operations
+  trainModel(modelType: PredictionModel!, datasetId: ID!): Boolean!
+  generateMolecules(scaffold: String!, count: Int = 5): [Molecule!]!
+  
+  # Association mutations
+  linkMoleculeToProject(moleculeId: ID!, projectId: ID!): Boolean!
+  unlinkMoleculeFromProject(moleculeId: ID!, projectId: ID!): Boolean!
+  linkMoleculeToTrial(moleculeId: ID!, trialId: ID!): Boolean!
+  unlinkMoleculeFromTrial(moleculeId: ID!, trialId: ID!): Boolean!
+  linkPaperToMolecule(paperId: ID!, moleculeId: ID!): Boolean!
+  unlinkPaperFromMolecule(paperId: ID!, moleculeId: ID!): Boolean!
+  addUserToProject(userId: ID!, projectId: ID!): Boolean!
+  removeUserFromProject(userId: ID!, projectId: ID!): Boolean!
+}
+
+# =========================
+# SUBSCRIPTIONS
+# =========================
+
+type Subscription {
+  # Real-time updates for entities
+  moleculeUpdated(id: ID): Molecule!
+  moleculeCreated: Molecule!
+  moleculeDeleted: ID!
+  
+  projectUpdated(id: ID): Project!
+  projectCreated: Project!
+  projectDeleted: ID!
+  
+  clinicalTrialUpdated(id: ID): ClinicalTrial!
+  clinicalTrialCreated: ClinicalTrial!
+  clinicalTrialDeleted: ID!
+  
+  safetyEventCreated: SafetyEvent!
+  safetyEventUpdated(id: ID): SafetyEvent!
+  
+  mlPredictionCompleted(moleculeId: ID): MLPrediction!
+  
+  researchInsightGenerated(topic: ResearchTopic): ResearchInsight!
+  
+  # Activity feeds
+  recentActivity: JSON!
+  userActivity(userId: ID!): JSON!
+  projectActivity(projectId: ID!): JSON!
+  
+  # Notifications
+  notifications(userId: ID!): JSON!
+  systemAlerts: JSON!
+  
+  # Real-time collaboration
+  collaborationUpdates(entityType: String!, entityId: ID!): JSON!
+}
